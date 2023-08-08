@@ -1,0 +1,37 @@
+BasedOnStyle: llvm
+
+IndentWidth: 4
+ColumnLimit: 120
+
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: true
+  PadOperators: true
+  AlignCompound: true
+
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: true
+
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: true
+
+AlignTrailingComments: 
+    Kind: Leave
+
+
+AllowShortCaseLabelsOnASingleLine: true
+
+AlignConsecutiveShortCaseStatements:
+  Enabled: true
+  AcrossEmptyLines: true
+  AcrossComments: true
+  AlignCaseColons: true
+
+IndentCaseLabels: true
+
+IncludeBlocksStyle: Preserve

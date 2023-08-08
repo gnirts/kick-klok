@@ -1,0 +1,35 @@
+#define KICK_CHANNEL 1
+
+#define KICK_LOW_NOTE  20
+#define KICK_HIGH_NOTE 69
+
+#define KICK_DRIVE_MIN 60
+#define KICK_DRIVE_MAX 127
+#define KICK_TONE_MIN  45
+#define KICK_TONE_MAX  127
+#define KICK_DECAY_MIN 70
+#define KICK_DECAY_MAX 127
+#define KICK_BEND1_MIN 43
+#define KICK_BEND1_MAX 64
+#define KICK_BEND2_MIN 65
+#define KICK_BEND2_MAX 90
+
+#define KICK_DRIVE_RANGE (KICK_DRIVE_MAX - KICK_DRIVE_MIN)
+#define KICK_TONE_RANGE (KICK_TONE_MAX - KICK_TONE_MIN)
+#define KICK_DECAY_RANGE (KICK_DECAY_MAX - KICK_DECAY_MIN)
+#define KICK_BEND1_RANGE (KICK_BEND1_MAX - KICK_BEND1_MIN)
+#define KICK_BEND2_RANGE (KICK_BEND2_MAX - KICK_BEND2_MIN)
+
+
+// Volca Kick CCs
+#define KICK_CC_PULSE_COLOR 40
+#define KICK_CC_PULSE_LEVEL 41
+#define KICK_CC_ATTACK      42
+#define KICK_CC_DECAY       43
+#define KICK_CC_DRIVE       44
+#define KICK_CC_TONE        45
+#define KICK_CC_PITCH       46
+#define KICK_CC_BEND        47
+#define KICK_CC_TIME        48
+
+void triggerKick(int note, int velocity);

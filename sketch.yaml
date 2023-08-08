@@ -1,0 +1,2 @@
+default_fqbn: teensy:avr:teensy41
+default_port: usb2/2-4/2-4.3
