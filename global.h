@@ -20,6 +20,14 @@ MIDI_CREATE_INSTANCE(HardwareSerial, Serial6, MIDI6);
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial7, MIDI7);
 // MIDI_CREATE_INSTANCE(HardwareSerial, Serial8, MIDI8);
 
+#define TR8S_IN   MIDI1
+#define TR8S_THRU MIDI1
+#define DTX_IN    MIDI2
+#define SP404_IN  MIDI6
+#define SP404_OUT MIDI6
+
+#define USB_ENABLED 1
+
 // Create the ports for USB devices plugged into Teensy's 2nd USB port (via
 // hubs)
 USBHost     myusb;
