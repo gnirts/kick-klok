@@ -22,6 +22,7 @@ void setup() {
     MIDI2.begin(MIDI_CHANNEL_OMNI);
     MIDI3.begin(MIDI_CHANNEL_OMNI);
     MIDI4.begin(MIDI_CHANNEL_OMNI);
+    // can't use MIDI5 because of the audio board
     MIDI6.begin(MIDI_CHANNEL_OMNI);
     MIDI7.begin(MIDI_CHANNEL_OMNI);
 
@@ -29,21 +30,11 @@ void setup() {
     MIDI2.turnThruOff();
     MIDI3.turnThruOff();
     MIDI4.turnThruOff();
+    // can't use MIDI5 because of the audio board
     MIDI6.turnThruOff();
     MIDI7.turnThruOff();
 
     myusb.begin();
-    
-}
-
-void forward_midi(midi::MidiType type, midi::Channel channel, midi::DataByte data1, midi::DataByte data2) {
-    usbMIDI.send(type, data1, data2, channel, 0);
-    MIDI1.send(type, data1, data2, channel); // send to breakbox via TR8
-    // cannot use MIDI2 output with audio board
-    MIDI3.send(type, data1, data2, channel);
-    MIDI4.send(type, data1, data2, channel);
-    MIDI6.send(type, data1, data2, channel); // SP-404
-    MIDI7.send(type, data1, data2, channel); // Volca KiCK
 }
 
 void read_dtx_msg(midi::MidiType type, midi::Channel channel, midi::DataByte data1, midi::DataByte data2) {
@@ -196,7 +187,6 @@ void read_sp404_msg(midi::MidiType type, midi::Channel channel, midi::DataByte d
     Serial.printf("\t\t\t\t%X ch%2d  %3d  %3d\n", type, channel, data1, data2);
 }
 
-
 void read_tr8_msg(midi::MidiType type, midi::Channel channel, midi::DataByte data1, midi::DataByte data2) {
     if(type == midi::ActiveSensing || type == midi::SystemExclusive) {
         return;
@@ -224,7 +214,10 @@ void read_tr8_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
         Serial.printf("=== TR8 pgrm change [%d %d] on ch%d ===\n", data1, data2, channel);
 
         // reset the SP404 pattern clock
-
+        
+        // 404 example:
+        // 0xC3 0F -> Bank D Pattern 16
+        // PC#0 = Pattern 1
 
         return;
     }
