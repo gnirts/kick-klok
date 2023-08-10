@@ -39,37 +39,28 @@ void setup() {
 
 void read_dtx_msg(midi::MidiType type, midi::Channel channel, midi::DataByte data1, midi::DataByte data2) {
 
-        // print message unless it's clock
+    // print message unless it's clock
     if (type != midi::Clock && type != midi::NoteOn) {
-            Serial.printf("%X ch%2d  %3d  %3d\t", type, channel, data1, data2);
+        Serial.printf("%X ch%2d  %3d  %3d\t", type, channel, data1, data2);
     }
 
     if (type == midi::Start) {
-
         Serial.printf("=== starting on channel %d ===\n", channel);
-        forward_midi(type, channel, data1, data2);
-
-            // send a start pattern sequence command to 404
-
+        // forward_midi(type, channel, data1, data2);
     } else if (type == midi::Stop) {
-
         Serial.printf("=== stopping on channel %d ===\n", channel);
-        forward_midi(type, channel, data1, data2);
+        // forward_midi(type, channel, data1, data2);
 
     } else if (type == midi::ProgramChange) {
         Serial.printf("=== pgrm change [%d %d] on channel %d ===\n", data1, data2, channel);
-
-        MIDI1.send(type, data1, data2, channel); // send to breakbox via TR8
+        DTX_IN.send(type, data1, data2, channel); // send to breakbox via TR8
 
     } else if (type == midi::ControlChange) {
-
-        MIDI1.send(type, data1, data2, channel); // send to breakbox via TR8
-
-            // check if incoming CC is the hi hat depression
-            // store the last seen value
-            // if it's over a threshold, send notes to 404
-            // otherwise send to TR8
-
+        DTX_IN.send(type, data1, data2, channel); // send to breakbox via TR8
+        // check if incoming CC is the hi hat depression
+        // store the last seen value
+        // if it's over a threshold, send notes to 404
+        // otherwise send to TR8
     } else if (type == midi::NoteOn) {
         int note    = data1;
         int vel     = data2;
@@ -80,24 +71,18 @@ void read_dtx_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
             case DTX_TOM1_NOTE: Serial.println("    T1                "); break;
             case DTX_TOM2_NOTE: Serial.println("       T2             "); break;
             case DTX_TOM3_NOTE: Serial.println("           T3         "); break;
-
             case DTX_CYMB_CRASH1_NOTE: Serial.println("K S T1 T2 T3 C1 C2 R H"); break;
-
             case DTX_CYMB_CRASH2_NOTE: Serial.println("K S T1 T2 T3 C1 C2 R H"); break;
-
             case DTX_CYMB_RIDE_NOTE: Serial.println("K S T1 T2 T3 C1 C2 R H"); break;
         }
 
-            // decide if BBX or 404
+        // decide if BBX or 404
         if (note == DTX_KICK_NOTE) {
             triggerKick(KICK_LOW_NOTE, vel);
             Serial.printf("sent KiCK vel=%d\t", vel);
-
         } else if (true) {
-            MIDI1.send(type, note, vel, channel); // send to breakbox via TR8
-
+            TR8S_THRU.send(type, note, vel, channel); // send to breakbox via TR8
         } else if (false) {
-
             switch (note) {
                 case DTX_SNARE_NOTE: note404 = SP404_NOTE_E5; break;
                 case DTX_TOM1_NOTE: note404 = SP404_NOTE_E9; break;
@@ -108,7 +93,6 @@ void read_dtx_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
                 case DTX_CYMB_RIDE_NOTE: note404 = SP404_NOTE_E16; break;
             }
             if (note404) {
-
                 sp404_fx(BUS1, ON);
                 if (vel > 60) {
                     sp404_fx(BUS2, ON);
@@ -116,14 +100,12 @@ void read_dtx_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
                     sp404_fx(BUS2, OFF);
                 }
                 sp404_note(note404);
-
                 if (vel < GHOST_THRESHOLD) {
                     sp404_fx(BUS1, OFF);
                     sp404_fx(BUS2, OFF);
-                    MIDI6.sendNoteOn(note404, MIN_VEL, SP404_CHANNEL);
+                    SP404_OUT.sendNoteOn(note404, MIN_VEL, SP404_CHANNEL);
                     Serial.printf("sent SP404 note %d\t", note404);
-                } else {
-                }
+                } 
             }
         } else {
             Serial.printf("unknown note %d \t", note);
@@ -134,16 +116,15 @@ void read_dtx_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
 }
 
 void read_sp404_msg(midi::MidiType type, midi::Channel channel, midi::DataByte data1, midi::DataByte data2) {
-    if(type == midi::ActiveSensing || type == midi::SystemExclusive) {
+    if (type == midi::ActiveSensing || type == midi::SystemExclusive) {
         return;
     }
 
-    if(channel == 16) {
-        if(type == midi::NoteOn) {
+    if (channel == 16) {
+        if (type == midi::NoteOn) {
             Serial.printf("chromatic note: %3d  %3d\n", data1, data2);
         } else {
             Serial.printf("chromatic 0x%X: %3d  %3d\n", type, data1, data2);
-
         }
         return;
     }
@@ -152,7 +133,6 @@ void read_sp404_msg(midi::MidiType type, midi::Channel channel, midi::DataByte d
         Serial.printf("=== starting on ch%d ===\n", channel);
         return;
     }
-
 
     if (type == midi::Stop) {
         Serial.printf("=== stopping on ch%d ===\n", channel);
@@ -174,7 +154,7 @@ void read_sp404_msg(midi::MidiType type, midi::Channel channel, midi::DataByte d
         return;
     }
 
-    if(type == midi::NoteOff) {
+    if (type == midi::NoteOff) {
         Serial.printf("ch%d     %d Off  vel %d\n", channel, data1, data2);
         return;
     }
@@ -188,7 +168,7 @@ void read_sp404_msg(midi::MidiType type, midi::Channel channel, midi::DataByte d
 }
 
 void read_tr8_msg(midi::MidiType type, midi::Channel channel, midi::DataByte data1, midi::DataByte data2) {
-    if(type == midi::ActiveSensing || type == midi::SystemExclusive) {
+    if (type == midi::ActiveSensing || type == midi::SystemExclusive) {
         return;
     }
 
@@ -202,7 +182,6 @@ void read_tr8_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
         return;
     }
 
-
     if (type == midi::Stop) {
         Serial.printf("=== TR8 stopping on ch%d ===\n", channel);
 
@@ -214,8 +193,8 @@ void read_tr8_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
         Serial.printf("=== TR8 pgrm change [%d %d] on ch%d ===\n", data1, data2, channel);
 
         // reset the SP404 pattern clock
-        
-        // 404 example:
+
+                // 404 example:
         // 0xC3 0F -> Bank D Pattern 16
         // PC#0 = Pattern 1
 
@@ -234,7 +213,7 @@ void read_tr8_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
         return;
     }
 
-    if(type == midi::NoteOff) {
+    if (type == midi::NoteOff) {
         return;
     }
 
@@ -292,11 +271,10 @@ void loop() {
     unsigned long current_millis = millis();
 
     if (prev_millis == 0 || current_millis - prev_millis > 1000) {
-        //Serial.printf("loop_count=%u\n", loop_count);
+        // Serial.printf("loop_count=%u\n", loop_count);
         prev_millis = current_millis;
     }
     loop_count++;
-
 
     if (DTX_IN.read()) {
         midi::MidiType type    = DTX_IN.getType();
@@ -310,7 +288,7 @@ void loop() {
         read_dtx_msg(type, channel, data1, data2);
     }
 
-    if (TR8S_IN.read()) { 
+    if (TR8S_IN.read()) {
         midi::MidiType type    = TR8S_IN.getType();
         midi::Channel  channel = TR8S_IN.getChannel();
         midi::DataByte data1   = TR8S_IN.getData1();
@@ -326,15 +304,15 @@ void loop() {
         // RING1     Brown  Blue
         // TIP       Orange Yellow
 
-        midi::MidiType type    = MIDI6.getType();
-        midi::Channel  channel = MIDI6.getChannel();
-        midi::DataByte data1   = MIDI6.getData1();
-        midi::DataByte data2   = MIDI6.getData2();
+        midi::MidiType type    = SP404_IN.getType();
+        midi::Channel  channel = SP404_IN.getChannel();
+        midi::DataByte data1   = SP404_IN.getData1();
+        midi::DataByte data2   = SP404_IN.getData2();
 
         read_sp404_msg(type, channel, data1, data2);
     }
 
-    if(USB_ENABLED) {
+    if (USB_ENABLED) {
         read_usb();
     }
 }
