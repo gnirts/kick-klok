@@ -9,6 +9,7 @@
 #define GHOST_THRESHOLD 34
 #define MAX_VEL         127
 #define MIN_VEL         1
+#define MIDI_PPQ        24
 
 // Create the Serial MIDI ports
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial1, MIDI1);
@@ -20,8 +21,8 @@ MIDI_CREATE_INSTANCE(HardwareSerial, Serial6, MIDI6);
 MIDI_CREATE_INSTANCE(HardwareSerial, Serial7, MIDI7);
 // MIDI_CREATE_INSTANCE(HardwareSerial, Serial8, MIDI8);
 
-#define TR8S_IN   MIDI1
-#define TR8S_THRU MIDI1
+#define TR8_IN    MIDI1
+#define TR8_THRU  MIDI1
 #define DTX_IN    MIDI2
 #define SP404_IN  MIDI6
 #define SP404_OUT MIDI6

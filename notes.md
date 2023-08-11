@@ -48,10 +48,7 @@ at the same time the start message comes from the TR8
 
 
 
-remove forward_midi
-send everything from dtx to tr8
 send ch16 404 back to itself
-send clock from tr8 to 404
 send clock from tr8 to 303
 send clock from tr8 to MF 
 

@@ -3,6 +3,12 @@
 #define SP404_CHANNEL 1
 #define SP404_NOTE_OFFSET 76
 
+#define SP404_NOTE_DI_09 64
+#define SP404_NOTE_DI_13 60
+#define SP404_NOTE_DI_14 61
+#define SP404_NOTE_DI_15 62
+#define SP404_NOTE_DI_16 63
+
 #define SP404_NOTE_E1  88
 #define SP404_NOTE_E2  89
 #define SP404_NOTE_E3  90

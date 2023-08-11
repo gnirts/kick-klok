@@ -6,6 +6,7 @@
 #include "dtx.h"
 #include "global.h"
 #include "sp404.h"
+#include "tr8.h"
 #include "volca.h"
 #include <MIDI.h>
 #include <USBHost_t36.h> // access to USB MIDI devices (plugged into 2nd USB port)
@@ -81,7 +82,7 @@ void read_dtx_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
             triggerKick(KICK_LOW_NOTE, vel);
             Serial.printf("sent KiCK vel=%d\t", vel);
         } else if (true) {
-            TR8S_THRU.send(type, note, vel, channel); // send to breakbox via TR8
+            TR8_THRU.send(type, note, vel, channel); // send to breakbox via TR8
         } else if (false) {
             switch (note) {
                 case DTX_SNARE_NOTE: note404 = SP404_NOTE_E5; break;
@@ -105,7 +106,7 @@ void read_dtx_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
                     sp404_fx(BUS2, OFF);
                     SP404_OUT.sendNoteOn(note404, MIN_VEL, SP404_CHANNEL);
                     Serial.printf("sent SP404 note %d\t", note404);
-                } 
+                }
             }
         } else {
             Serial.printf("unknown note %d \t", note);
@@ -114,6 +115,14 @@ void read_dtx_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
 
     Serial.print("\n");
 }
+
+unsigned long clockCount               = 0;
+unsigned long noteCount                = 0;
+unsigned long barCount                 = 0;
+int           clockRunning             = false;
+int           send_bus1_enable         = false;
+int           send_bus1_enable_quarter = false;
+int           cycle_djfx               = false;
 
 void read_sp404_msg(midi::MidiType type, midi::Channel channel, midi::DataByte data1, midi::DataByte data2) {
     if (type == midi::ActiveSensing || type == midi::SystemExclusive) {
@@ -150,12 +159,60 @@ void read_sp404_msg(midi::MidiType type, midi::Channel channel, midi::DataByte d
     }
 
     if (type == midi::NoteOn) {
-        Serial.printf("ch%d  On %d      vel %d\n", channel, data1, data2);
-        return;
+        int note = data1;
+        Serial.printf("404 ch%2d note %2d ON", channel, note);
+
+        if (channel != 2) {
+            Serial.println();
+            return;
+        }
+
+        switch (note) {
+            case SP404_NOTE_DI_13:
+                SP404_OUT.sendControlChange(SP404_CC_FX_NUMBER, 2, BUS1);
+                sp404_fx(BUS1, OFF);
+                send_bus1_enable = true;
+                break;
+
+            case SP404_NOTE_DI_14:
+                SP404_OUT.sendControlChange(SP404_CC_FX_NUMBER, 2, BUS1);
+                SP404_OUT.sendControlChange(SP404_CC_FX_CTRL1, 34, BUS1);
+                SP404_OUT.sendControlChange(SP404_CC_FX_CTRL2, 34, BUS1);
+                SP404_OUT.sendControlChange(SP404_CC_FX_CTRL3, 127, BUS1);
+                SP404_OUT.sendControlChange(SP404_CC_FX_CTRL4, 0, BUS1);
+                sp404_fx(BUS1, OFF);
+                send_bus1_enable = true;
+                Serial.printf("waiting for even bar\n");
+                break;
+
+            case SP404_NOTE_DI_15:
+                sp404_fx(BUS2, OFF);
+                SP404_OUT.sendControlChange(SP404_CC_FX_NUMBER, 5, BUS2);
+                // SP404_OUT.sendControlChange(SP404_CC_FX_CTRL1, 70, BUS2);
+                SP404_OUT.sendControlChange(SP404_CC_FX_CTRL2, 127, BUS2);
+                SP404_OUT.sendControlChange(SP404_CC_FX_CTRL3, 0, BUS2);
+                sp404_fx(BUS2, ON);
+                cycle_djfx = true;
+                Serial.printf("cycle djfx\n");
+                break;
+
+            case SP404_NOTE_DI_16:
+                sp404_fx(BUS2, OFF);
+                cycle_djfx = false;
+                Serial.printf("stop cycle\n");
+                break;
+
+            case SP404_NOTE_DI_09:
+                // SP404_OUT.sendControlChange(SP404_CC_FX_NUMBER, 2, BUS1);
+                // sp404_fx(BUS1, OFF);
+                send_bus1_enable_quarter = true;
+                Serial.printf("waiting for even bar + quarter\n");
+                break;
+        }
     }
 
     if (type == midi::NoteOff) {
-        Serial.printf("ch%d     %d Off  vel %d\n", channel, data1, data2);
+        Serial.printf("404 ch%2d note %2d OFF\n", channel, data1);
         return;
     }
 
@@ -167,37 +224,132 @@ void read_sp404_msg(midi::MidiType type, midi::Channel channel, midi::DataByte d
     Serial.printf("\t\t\t\t%X ch%2d  %3d  %3d\n", type, channel, data1, data2);
 }
 
+void reset_clock() {
+    clockCount = 0;
+    noteCount  = 0;
+    barCount   = 0;
+}
+
+void print_bar() {
+    Serial.printf("bar %3d\n", barCount + 1);
+    return;
+
+    if (barCount == 0) {
+        Serial.printf("START 1 ");
+    } else if (barCount % 8 == 0) {
+        Serial.printf("%4d\n--- %3d ", noteCount, barCount + 1);
+    } else if (barCount % 8 == 7) {
+        Serial.printf("%4d\nBAR %3d ", noteCount, barCount + 1);
+    } else {
+        Serial.printf("%4d\nbar %3d ", noteCount, barCount + 1);
+    }
+}
+
+void print_count() {
+    if (clockCount % MIDI_PPQ == 6 || clockCount % MIDI_PPQ == 6 + 24 || clockCount % MIDI_PPQ == 6 + 48 ||
+        clockCount % MIDI_PPQ == 6 + 72) {
+        Serial.printf("e ");
+    } else if (clockCount % MIDI_PPQ == 12 || clockCount % MIDI_PPQ == 12 + 24 || clockCount % MIDI_PPQ == 12 + 48 ||
+               clockCount % MIDI_PPQ == 12 + 72) {
+        Serial.printf("& ");
+    } else if (clockCount % MIDI_PPQ == 18 || clockCount % MIDI_PPQ == 18 + 24 || clockCount % MIDI_PPQ == 18 + 48 ||
+               clockCount % MIDI_PPQ == 18 + 72) {
+        Serial.printf("a ");
+    }
+}
+
 void read_tr8_msg(midi::MidiType type, midi::Channel channel, midi::DataByte data1, midi::DataByte data2) {
     if (type == midi::ActiveSensing || type == midi::SystemExclusive) {
         return;
     }
 
-    TR8S_THRU.send(type, data1, data2, channel);
+    TR8_THRU.send(type, data1, data2, channel);
 
     if (type == midi::Start) {
-        Serial.printf("=== TR8 starting on ch%d ===\n", channel);
+        clockRunning = true;
+        reset_clock();
+        Serial.println("TR8 start\n");
 
-        // reset the SP404 pattern clock
-
+        sp404_fx(BUS1, OFF);
+        SP404_OUT.sendControlChange(SP404_CC_FX_NUMBER, 2, BUS1);
+        sp404_fx(BUS1, ON);
+        // SP404_OUT.sendControlChange(SP404_CC_FX_CTRL3, 0, BUS1);
+        
+        SP404_OUT.sendStart();
+        MIDI3.sendStart();
+        MIDI4.sendStart();
+        MIDI7.sendStart();
         return;
     }
 
     if (type == midi::Stop) {
-        Serial.printf("=== TR8 stopping on ch%d ===\n", channel);
+        clockRunning = false;
+        reset_clock();
+        Serial.println("TR8 stop\n");
+        
+        SP404_OUT.sendStop();
+        MIDI3.sendStop();
+        MIDI4.sendStop();
+        MIDI7.sendStop();
+        return;
+    }
 
-        // stop the SP404 pattern clock
+    if (type == midi::Clock) {
+        SP404_OUT.sendClock();
+        MIDI3.sendClock();
+        MIDI4.sendClock();
+        MIDI7.sendClock();
+
+        if (!clockRunning) {
+            return;
+        }
+
+        if (cycle_djfx) {
+            if (clockCount % 12 == 0) {
+                SP404_OUT.sendControlChange(SP404_CC_FX_CTRL3, 0, BUS2);
+                Serial.println("djfx off");
+            } else if (clockCount % 12 == 1) {
+                SP404_OUT.sendControlChange(SP404_CC_FX_CTRL3, 127, BUS2);
+                Serial.println("djfx on");
+            }
+        }
+
+        if (clockCount % MIDI_PPQ == 0) {
+            if (noteCount % 4 == 0) {
+                print_bar();
+                barCount++;
+                if (barCount % 4 == 0 && send_bus1_enable) {
+                    sp404_fx(BUS1, ON);
+                    SP404_OUT.sendControlChange(SP404_CC_FX_CTRL3, 127, BUS1);
+                    send_bus1_enable = false;
+                    Serial.printf("even bar, BUS1 ON\n");
+                }
+            } else if (noteCount % 4 == 1 && send_bus1_enable_quarter) {
+                sp404_fx(BUS1, OFF);
+                sp404_fx(BUS1, ON);
+                SP404_OUT.sendControlChange(SP404_CC_FX_CTRL3, 127, BUS1);
+                send_bus1_enable_quarter = false;
+                Serial.printf("beat 2, BUS1 ON\n");
+            } else {
+                // Serial.printf("%d ", ((clockCount / MIDI_PPQ) % 4) + 1);
+            }
+            noteCount++;
+        } else {
+            // print_count();
+        }
+
+        clockCount++;
+
         return;
     }
 
     if (type == midi::ProgramChange) {
-        Serial.printf("=== TR8 pgrm change [%d %d] on ch%d ===\n", data1, data2, channel);
+        if (channel == TR8_KIT_CHANNEL) {
+            return;
+        }
 
-        // reset the SP404 pattern clock
-
-                // 404 example:
-        // 0xC3 0F -> Bank D Pattern 16
-        // PC#0 = Pattern 1
-
+        Serial.printf("=== TR8 pgrm change [%d]    %d on ch%d ===\n", data1, data2, channel);
+        reset_clock();
         return;
     }
 
@@ -207,9 +359,6 @@ void read_tr8_msg(midi::MidiType type, midi::Channel channel, midi::DataByte dat
     }
 
     if (type == midi::NoteOn) {
-        // can we detect anything interesting?
-        // ext trig
-        // bass drum
         return;
     }
 
@@ -288,11 +437,11 @@ void loop() {
         read_dtx_msg(type, channel, data1, data2);
     }
 
-    if (TR8S_IN.read()) {
-        midi::MidiType type    = TR8S_IN.getType();
-        midi::Channel  channel = TR8S_IN.getChannel();
-        midi::DataByte data1   = TR8S_IN.getData1();
-        midi::DataByte data2   = TR8S_IN.getData2();
+    if (TR8_IN.read()) {
+        midi::MidiType type    = TR8_IN.getType();
+        midi::Channel  channel = TR8_IN.getChannel();
+        midi::DataByte data1   = TR8_IN.getData1();
+        midi::DataByte data2   = TR8_IN.getData2();
 
         read_tr8_msg(type, channel, data1, data2);
     }
